@@ -2,6 +2,11 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include "my.h"
+#include <linux/buffer_head.h>
+
+/*
+Function creates, configures and returns an inode.
+*/
 
 struct inode *myfs_get_inode (struct super_block *sb,
 				const struct inode *dir, umode_t mode,
@@ -58,10 +63,29 @@ static struct inode_operations myfs_inode_ops = {
 int myfs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct inode *inode;
+	struct buffer_head *bh;
+	struct myfs_super_block *sb_disk;
+	bh = (struct buffer_head *)sb_bread(sb,0); // read 0th sector into sb. sb_bread(device, superblock, sector)
+	sb_disk = (struct myfs_super_block *)bh->b_data; // assign buffer head data (superblock) to disk sb structure
+	brelse(bh);		// free buffer head
+
+	printk(KERN_INFO "Magic Number Obtained = [%d]\n", sb_disk->magic);
+	if(sb_disk ->magic != MYFS_MAGIC) {
+		printk("Disk Magic Mismatch\n");
+		return -EPERM;
+	}
+
+	if(sb_disk ->block_size != MYFS_DEFAULT_BLOCK_SIZE){
+		printk(KERN_ERR "MyFS seems to be formatted with a different block size [%d]\n", sb_disk ->block_size);
+		return -EPERM;
+	}
+
+	printk(KERN_INFO "device dectected with version [%d], magic [%x], block_size[%d], free_blocks [%d]\n", sb_disk->version, sb_disk->magic, sb_disk->block_size, sb_disk->free_blocks);
+
 	printk("%s()\n",__func__);
 	sb -> s_magic = MYFS_MAGIC;
-	inode = myfs_get_inode(sb, NULL, S_IFDIR, 0);
-	sb -> s_root = d_make_root(inode);		// struct dentry super_block.s_root. dentry contains file system structure.
+	inode = myfs_get_inode(sb, NULL, S_IFDIR, 0);	// create and configure an inode and assign it to inode
+	sb -> s_root = d_make_root(inode);		// make inode as root of superblock. s_root is of type dentry.
 	inode -> i_op = &myfs_inode_ops;
 	inode -> i_fop = &myfs_dir_ops;
 							// make the iniitalized inode the superblock root inode
