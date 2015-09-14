@@ -1,7 +1,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/fs.h>
-
+#include "my.h"
 
 struct inode *myfs_get_inode (struct super_block *sb,
 				const struct inode *dir, umode_t mode,
@@ -35,15 +35,35 @@ struct inode *myfs_get_inode (struct super_block *sb,
 	return inode;
 }
 
+static int myfs_iterate(struct file *filp, struct dir_context *ctx /*, void *dirent, filldir_t filldir*/)
+{
+	return 0;
+}
+
+static struct file_operations myfs_dir_ops = {
+	.owner = THIS_MODULE,
+	.iterate = myfs_iterate,
+};
+
+struct dentry *myfs_lookup(struct inode *parent_inode,
+		struct dentry *child_dentry, unsigned int flags)
+{
+	return NULL;
+}
+
+static struct inode_operations myfs_inode_ops = {
+	.lookup = myfs_lookup,
+};
 
 int myfs_fill_super(struct super_block *sb, void *data, int silent)
 {
 	struct inode *inode;
 	printk("%s()\n",__func__);
-	sb -> s_magic = 0x13092015;
-	
+	sb -> s_magic = MYFS_MAGIC;
 	inode = myfs_get_inode(sb, NULL, S_IFDIR, 0);
 	sb -> s_root = d_make_root(inode);		// struct dentry super_block.s_root. dentry contains file system structure.
+	inode -> i_op = &myfs_inode_ops;
+	inode -> i_fop = &myfs_dir_ops;
 							// make the iniitalized inode the superblock root inode
 	if(!sb->s_root)					
 		return -ENOMEM;

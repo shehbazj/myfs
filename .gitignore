@@ -6,3 +6,4 @@
 *.mod.c
 .tmp_versions/*
 myfile
+mkfs-myfs
