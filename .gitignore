@@ -5,3 +5,4 @@
 *.order
 *.mod.c
 .tmp_versions/*
+myfile
